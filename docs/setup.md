@@ -12,7 +12,7 @@
 - **A Roblox Studio install.** Fonts and `rbxasset://` textures are read from it; rur ships none.
   On macOS it is `RobloxStudio.app/Contents/Resources` in `/Applications` or `~/Applications`; there rur
   builds, renders and passes its tests (`npm test`, the engine goldens and `cargo test` in `native/`, Apple
-  Silicon, 2026-11-06). `RUR_ROBLOX_CONTENT` can point at a copy of Studio's `content` folder instead (for
+  Silicon, 2026-11-06), and `rur compare` captures Studio ([studio.md](studio.md#macos)). `RUR_ROBLOX_CONTENT` can point at a copy of Studio's `content` folder instead (for
   example on Linux, where rur builds and renders headless but is less tested).
 - Optional: a Roblox account cookie for `rbxassetid://` images that Roblox's public asset delivery refuses
   ([assets.md](assets.md)); ffmpeg for `rur sequence` videos (`RUR_FFMPEG`); Python 3 with Pillow for WebP

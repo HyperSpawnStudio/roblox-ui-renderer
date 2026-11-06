@@ -9,7 +9,7 @@ import path from "node:path";
 import { PNG } from "pngjs";
 import { fileURLToPath } from "node:url";
 
-import { runLuau, captureViewport, luauString, focusStudio, restoreFocus, ensureWholeViewport, DEFAULT_STUDIO } from "./studio.mjs";
+import { runLuau, captureViewport, locateViewportMac, captureViewportMac, luauString, focusStudio, restoreFocus, ensureWholeViewport, DEFAULT_STUDIO } from "./studio.mjs";
 import { withStudioLock } from "./lock.mjs";
 import { OUT_DIR, sharedStatePath } from "./paths.mjs";
 import { render } from "./rur.mjs";
@@ -32,6 +32,9 @@ function storyInstancePath(file, roots) {
 
 // Windows display scales tried, in order, when --dpi is not given (1.5 first: the usual one here)
 const DISPLAY_SCALES = [1.5, 1, 1.25, 1.75, 2, 2.25, 2.5, 3, 3.5];
+// macOS backing scales (Retina 2x, else 1x)
+const MAC_DISPLAY_SCALES = [2, 1];
+const MAC = process.platform === "darwin";
 
 const MOUNT_LUAU = ({ pathParts, width, height, background, time, modelB64, fixtureSource, probes = {} }) => `
 local HttpService = game:GetService("HttpService")
@@ -911,8 +914,12 @@ export async function compare(args) {
 			// A fractional viewport size blurs the capture: Studio's window is nudged to a whole one first
 			// (cli/studio.mjs ensureWholeViewport); focus only with --focus (not needed once it's whole)
 			await ensureWholeViewport({ studio });
+			// macOS: where the viewport is in Studio's window, found before the mount (cli/maccap.mjs), so the
+			// capture follows the mount as closely as PrintWindow's does
+			const location = MAC ? await locateViewportMac({ studio, scales: dpi ? [dpi] : MAC_DISPLAY_SCALES, region: [width, height], captureFile: capturePath }) : null;
 			let previousFocus = null;
-			if (args.focus) {
+			// focusing is tools/wincap's (Windows); a macOS window capture does not need Studio in front
+			if (args.focus && !MAC) {
 				process.env.RUR_FOCUS = "1";
 				const target = await runLuau("return 0", { studio });
 				previousFocus = focusStudio(target.studio.name);
@@ -927,7 +934,15 @@ export async function compare(args) {
 			}
 			const result = JSON.parse(mounted.text);
 			try {
-				result.dpi = captureViewport(mounted.studio.name, result.viewport[0], result.viewport[1], capturePath, dpi ? [dpi] : DISPLAY_SCALES);
+				if (location) {
+					captureViewportMac(location, capturePath);
+					result.dpi = location.scale;
+					if (Math.abs(result.viewport[0] - location.viewport[0]) > 0.01 || Math.abs(result.viewport[1] - location.viewport[1]) > 0.01) {
+						throw new Error(`Studio's viewport changed from ${location.viewport.join("x")} to ${result.viewport.join("x")} during the capture: run the comparison again`);
+					}
+				} else {
+					result.dpi = captureViewport(mounted.studio.name, result.viewport[0], result.viewport[1], capturePath, dpi ? [dpi] : DISPLAY_SCALES);
+				}
 			} finally {
 				restoreFocus(previousFocus);
 				await runLuau(UNMOUNT_LUAU, { studio });

@@ -27,6 +27,7 @@ export async function selftest() {
 		[process.execPath, ["tools/tests/web-bundle-directories.mjs"]],
 		[process.execPath, ["tools/tests/places.mjs"]],
 		[process.execPath, ["tools/tests/examples.mjs"]],
+		[process.execPath, ["tools/tests/maccap.mjs"]],
 	];
 	// The checks are independent (each writes its own out/ directory): they run concurrently and each
 	// one's output is printed whole, in the list's order
