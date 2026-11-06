@@ -8,6 +8,8 @@
 //   is mounted at `ReplicatedStorage/<project name>`, or where `--rojo-at Service/Name` says.
 // - `$path` to another *.project.json nests that project's tree; `{ "optional": path }` is skipped
 //   when missing; `$properties`, `$attributes` and `$ignoreUnknownInstances` are ignored.
+// - A mounted directory holding a default.project.json (a roblox-ts package) mounts as that project:
+//   the engine reads it (roblox-engine-emulator's project.rs), named by the project as Rojo names it.
 //
 // `--mount Service/Name=<dir|file>` (repeatable, `;`-separated too) adds explicit mounts.
 

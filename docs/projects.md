@@ -68,7 +68,9 @@ describes instead (`cli/rojo.mjs`): a `DataModel` tree mounts each `$path` at it
 `{ "optional": ... }` paths skipped when missing); any other tree mounts at
 `ReplicatedStorage/<project name>` (`--rojo-at Service/Name` moves it). `--mount Service/Name=<dir|file>`
 (repeatable) adds a mount of its own. With a Rojo project or mounts and no `--roots`, no project roots are
-mounted.
+mounted. A mounted directory that holds a `default.project.json` mounts as that project, named by its
+`name`, as Rojo reads it: roblox-ts packages (`node_modules/@rbxts/react`, `@rbxts-js/React`) resolve as
+they do in Studio.
 
 ```powershell
 node cli/rur.mjs render --rojo ../my-plugin/default.project.json --story ../my-plugin/stories/App.story.luau --plugin

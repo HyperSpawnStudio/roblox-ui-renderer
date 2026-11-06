@@ -103,6 +103,42 @@ end
 	assert.equal(widget.scene.nodes.find(node => node.class === "DockWidgetPluginGui")?.visible, true);
 	assert.equal(widget.text("Title"), "Setting Dark");
 
+	// Packages as roblox-ts installs them: each directory holds a default.project.json and mounts as that
+	// project, named by its project name ("@ui/kit" is Kit), so one package requires another by it; and
+	// ReflectionService:GetClasses, which React's host component tags read
+	write("packages.project.json", JSON.stringify({ name: "Packages", tree: { $className: "DataModel", ReplicatedStorage: { Packages: { $path: "packages" } } } }));
+	write("packages/@ui/kit/default.project.json", JSON.stringify({ name: "Kit", tree: { $path: "src" } }));
+	write("packages/@ui/kit/src/init.luau", `local Tags = {}
+for _, Class in game:GetService("ReflectionService"):GetClasses() do
+	Tags[string.lower(Class.Name)] = Class.Name
+end
+return function(Kind, Text, Target)
+	local Label = Instance.new(Tags[Kind])
+	Label.Name = "Title"
+	Label.Size = UDim2.fromOffset(200, 40)
+	Label.Text = Text
+	Label.Parent = Target
+end
+`);
+	write("packages/@ui/label/default.project.json", JSON.stringify({ name: "label", tree: { $path: "src" } }));
+	write("packages/@ui/label/src/init.luau", `local Kit = require(script.Parent.Kit)
+return function(Target) Kit("textlabel", "From a package", Target) end
+`);
+	write("stories/Package.story.luau", `local Label = require(game:GetService("ReplicatedStorage").Packages["@ui"].label)
+return function(Target) Label(Target) end
+`);
+	{
+		const result = spawnSync(process.execPath, ["cli/rur.mjs", "render", "--rojo", path.join(dir, "packages.project.json"), "--story", path.join(dir, "stories/Package.story.luau"), "--viewport", "600x450@physical", "--no-png", "--offline", "--json", "--out", path.join(dir, "out/package")],
+			{ cwd: root, encoding: "utf8", windowsHide: true, env: { ...process.env, RUR_STATE_DIR: path.join(dir, "state"), RUR_NO_SERVICE: "1" } });
+		assert.equal(result.status, 0, result.stderr);
+		const summary = JSON.parse(result.stdout);
+		assert.equal(summary.status, "ok", summary.failure || JSON.stringify(summary.output));
+		const scene = JSON.parse(fs.readFileSync(path.join(summary.out, "scene.json"), "utf8"));
+		const title = scene.nodes.find(node => node.name === "Title");
+		assert.equal(title?.class, "TextLabel");
+		assert.equal(title?.props?.text, "From a package");
+	}
+
 	// --git-ref: the committed story and sources, not the working tree's edits
 	const git = (...args) => spawnSync("git", ["-C", dir, "-c", "user.name=rur", "-c", "user.email=rur@localhost", ...args], { encoding: "utf8", windowsHide: true });
 	if (git("init", "-q").status === 0 && git("add", "-A").status === 0 && git("commit", "-qm", "base").status === 0) {
@@ -114,7 +150,7 @@ end
 		assert.match(git("status", "--short", "--untracked-files=no").stdout, /^ M stories\/App\.story\.luau\s*$/);
 	}
 	fs.rmSync(dir, { recursive: true, force: true });
-	console.log("CLI project options: PASS (rojo, outside stories, fixture controls, @physical, --json, --git-ref, --plugin, tree ancestry)");
+	console.log("CLI project options: PASS (rojo, package projects, outside stories, fixture controls, @physical, --json, --git-ref, --plugin, tree ancestry)");
 }
 
 // Render diagnostics (cli/diagnostics.mjs): AutomaticSize-culled rows, wrapped lines a short box drops,
