@@ -422,18 +422,16 @@ fn content_roots() -> Vec<PathBuf> {
 }
 
 /// macOS: RobloxStudio.app's `Contents/Resources` holds `content`, `ExtraContent` and `PlatformContent`
-/// as a Windows version folder does; `/Applications` first, then `~/Applications` (cli/assets.mjs
-/// macStudioResources).
+/// as a Windows version folder does; the newest install first (cli/macstudio.mjs): the updater's build in
+/// `~/Library/Roblox/UnzippedBundle`, else `/Applications` or `~/Applications`, which may hold an older copy.
 #[cfg(target_os = "macos")]
 fn mac_studio_resources() -> Vec<PathBuf> {
-    let mut apps = vec![PathBuf::from("/Applications")];
-    if let Some(home) = std::env::var_os("HOME") {
-        apps.push(PathBuf::from(home).join("Applications"));
+    let mut dirs = vec![PathBuf::from("/Applications")];
+    if let Some(home) = std::env::var_os("HOME").map(PathBuf::from) {
+        dirs.insert(0, home.join("Library").join("Roblox").join("UnzippedBundle"));
+        dirs.push(home.join("Applications"));
     }
-    apps.into_iter()
-        .map(|dir| dir.join("RobloxStudio.app").join("Contents").join("Resources"))
-        .filter(|dir| dir.join("content").is_dir())
-        .collect()
+    studio_resources_newest_first(&dirs)
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -441,9 +439,47 @@ fn mac_studio_resources() -> Vec<PathBuf> {
     Vec::new()
 }
 
+/// The `Contents/Resources` of the RobloxStudio.app bundles in `dirs` that hold `content`, newest first by
+/// the app's executable.
+#[cfg(any(target_os = "macos", test))]
+fn studio_resources_newest_first(dirs: &[PathBuf]) -> Vec<PathBuf> {
+    let mut apps: Vec<(std::time::SystemTime, PathBuf)> = dirs
+        .iter()
+        .map(|dir| dir.join("RobloxStudio.app").join("Contents"))
+        .filter(|contents| contents.join("Resources").join("content").is_dir())
+        .filter_map(|contents| {
+            let modified = std::fs::metadata(contents.join("MacOS").join("RobloxStudio")).and_then(|meta| meta.modified()).ok()?;
+            Some((modified, contents.join("Resources")))
+        })
+        .collect();
+    apps.sort_by(|a, b| b.0.cmp(&a.0));
+    apps.into_iter().map(|(_, resources)| resources).collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_newest_mac_studio_install_comes_first() {
+        let root = std::env::temp_dir().join(format!("rur-mac-studio-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let app = |dir: &str, days: u64| {
+            let contents = root.join(dir).join("RobloxStudio.app").join("Contents");
+            std::fs::create_dir_all(contents.join("Resources").join("content")).unwrap();
+            std::fs::create_dir_all(contents.join("MacOS")).unwrap();
+            let executable = std::fs::File::create(contents.join("MacOS").join("RobloxStudio")).unwrap();
+            executable.set_modified(std::time::UNIX_EPOCH + std::time::Duration::from_secs(days * 86_400)).unwrap();
+            contents.join("Resources")
+        };
+        // an installer copy in Applications older than the updater's build
+        let applications = app("Applications", 20_000);
+        let bundle = app("UnzippedBundle", 20_030);
+        std::fs::create_dir_all(root.join("Empty").join("RobloxStudio.app")).unwrap();
+        let dirs: Vec<PathBuf> = ["Applications", "Empty", "Missing", "UnzippedBundle"].iter().map(|dir| root.join(dir)).collect();
+        assert_eq!(studio_resources_newest_first(&dirs), vec![bundle, applications]);
+        let _ = std::fs::remove_dir_all(&root);
+    }
 
     #[test]
     fn asset_ids_and_thumbnail_keys_follow_cli_assets() {

@@ -59,7 +59,7 @@ https.get = (url, options, callback) => {
 };
 
 try {
-	for (const name of ["assets.mjs", "paths.mjs"]) {
+	for (const name of ["assets.mjs", "macstudio.mjs", "paths.mjs"]) {
 		fs.mkdirSync(path.join(repo, "cli"), { recursive: true });
 		fs.copyFileSync(path.join(root, "cli", name), path.join(repo, "cli", name));
 	}

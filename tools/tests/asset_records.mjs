@@ -46,7 +46,7 @@ const delivered = body => [{ body: JSON.stringify({ location: "https://cdn.examp
 const record = name => JSON.parse(fs.readFileSync(path.join(assets, "downloaded", `${name}.json`), "utf8"));
 
 try {
-	for (const name of ["assets.mjs", "paths.mjs"]) {
+	for (const name of ["assets.mjs", "macstudio.mjs", "paths.mjs"]) {
 		fs.mkdirSync(path.join(repo, "cli"), { recursive: true });
 		fs.copyFileSync(path.join(root, "cli", name), path.join(repo, "cli", name));
 	}

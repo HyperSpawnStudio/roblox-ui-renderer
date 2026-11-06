@@ -18,6 +18,7 @@ import { spawnSync } from "node:child_process";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { stateDir } from "./paths.mjs";
+import { macStudioApps } from "./macstudio.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 // The state dir (cli/paths.mjs: RUR_STATE_DIR, alias RUR_CACHE_DIR, default <renderer>/.cache)
@@ -401,10 +402,10 @@ export function studioContentRoots() {
 }
 
 // macOS: RobloxStudio.app's Contents/Resources holds content, ExtraContent and PlatformContent as a Windows
-// version folder does; /Applications first, then the user's ~/Applications (ror-assets' studio.rs does the same).
+// version folder does; the newest install first (cli/macstudio.mjs).
 function macStudioResources() {
-	return ["/Applications", path.join(os.homedir(), "Applications")]
-		.map(dir => path.join(dir, "RobloxStudio.app", "Contents", "Resources"))
+	return macStudioApps()
+		.map(app => path.join(app, "Contents", "Resources"))
 		.filter(dir => fs.existsSync(path.join(dir, "content")));
 }
 

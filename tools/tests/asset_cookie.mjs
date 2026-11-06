@@ -79,7 +79,7 @@ https.get = (url, options, callback) => {
 };
 
 try {
-	for (const name of ["assets.mjs", "paths.mjs"]) write(path.join(repo, "cli", name), fs.readFileSync(path.join(root, "cli", name)));
+	for (const name of ["assets.mjs", "macstudio.mjs", "paths.mjs"]) write(path.join(repo, "cli", name), fs.readFileSync(path.join(root, "cli", name)));
 	process.chdir(temporary); // The repo's .env must work from another working directory.
 	await checkCookie(await load({ local: "ROBLOX_ASSET_DELIVERY_COOKIE=dummy-local # comment\n" }), "dummy-local");
 	await checkCookie(await load({ local: 'export ROBLOX_ASSET_DELIVERY_COOKIE=".ROBLOSECURITY=dummy-quoted" # comment\r\n' }), "dummy-quoted");

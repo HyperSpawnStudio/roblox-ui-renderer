@@ -13,13 +13,13 @@
 // bridge's own, so replies return to the connection that asked. A StudioMCP that exits is started again on the next
 // request. Listens on 127.0.0.1 only.
 //
-// STUDIO_MCP_BIN names the StudioMCP executable; the default is the one inside /Applications/RobloxStudio.app
-// (macOS), then ~/Applications.
+// STUDIO_MCP_BIN names the StudioMCP executable; the default is the one inside the newest RobloxStudio.app
+// (macOS: cli/macstudio.mjs).
 import fs from "node:fs";
 import net from "node:net";
-import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
+import { macStudioApps } from "../cli/macstudio.mjs";
 
 const args = process.argv.slice(2);
 const portArg = args.indexOf("--port");
@@ -28,8 +28,7 @@ const WARMUP_MS = Number(process.env.STUDIO_MCP_WARMUP_MS || 1500);
 
 function studioMcpBinary() {
 	if (process.env.STUDIO_MCP_BIN) return process.env.STUDIO_MCP_BIN;
-	const candidates = ["/Applications", path.join(os.homedir(), "Applications")].map(dir => path.join(dir, "RobloxStudio.app", "Contents", "MacOS", "StudioMCP"));
-	const found = candidates.find(file => fs.existsSync(file));
+	const found = macStudioApps().map(app => path.join(app, "Contents", "MacOS", "StudioMCP")).find(file => fs.existsSync(file));
 	if (!found) throw new Error("no StudioMCP found: set STUDIO_MCP_BIN to Roblox Studio's StudioMCP executable");
 	return found;
 }
