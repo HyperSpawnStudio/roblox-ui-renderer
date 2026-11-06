@@ -140,7 +140,8 @@ export async function ensureWholeViewport({ studio = DEFAULT_STUDIO } = {}) {
 	};
 	const fractional = value => Math.abs(value - Math.round(value)) > 0.01;
 	let { size, name } = await read();
-	for (let attempt = 0; attempt < 4 && (fractional(size[0]) || fractional(size[1])); attempt++) {
+	// resizing Studio's window is tools/wincap's (Windows); elsewhere the viewport is left as it is
+	for (let attempt = 0; process.platform === "win32" && attempt < 4 && (fractional(size[0]) || fractional(size[1])); attempt++) {
 		const title = name.replace(/\s*\(placeId:.*$/, "").replace(/\s*-\s*Roblox Studio$/, "");
 		const script = path.join(ROOT, "tools", "wincap", "resize.ps1");
 		spawnSync("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script, "-Title", title, "-DeltaWidth", fractional(size[0]) ? "1" : "0", "-DeltaHeight", fractional(size[1]) ? "1" : "0"], { encoding: "utf8", env: withoutCookie() });
@@ -181,6 +182,9 @@ export function restoreFocus(previous) {
 // to try, in order) the size is the viewport's logical size and the matching scale is returned;
 // without, `outFile`.
 export function captureViewport(studioName, width, height, outFile, scales) {
+	if (process.platform !== "win32") {
+		throw new Error("viewport capture is Windows-only (tools/wincap: PowerShell and PrintWindow); on macOS the Studio bridge (tools/studio-mcp-bridge.mjs) runs probes, but rur compare cannot capture Studio yet");
+	}
 	const title = studioName.replace(/\s*\(placeId:.*$/, "").replace(/\s*-\s*Roblox Studio$/, "");
 	const script = path.join(ROOT, "tools", "wincap", "capture.ps1");
 	const scaleArgs = scales ? ["-Scales", scales.join(",")] : [];

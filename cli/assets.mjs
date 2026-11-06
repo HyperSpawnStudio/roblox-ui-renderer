@@ -396,7 +396,22 @@ export function studioContentRoots() {
 			.sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
 		roots.push(...entries);
 	} catch {}
+	if (process.platform === "darwin") roots.push(...macStudioResources());
 	return roots;
+}
+
+// macOS: RobloxStudio.app's Contents/Resources holds content, ExtraContent and PlatformContent as a Windows
+// version folder does; /Applications first, then the user's ~/Applications (ror-assets' studio.rs does the same).
+function macStudioResources() {
+	return ["/Applications", path.join(os.homedir(), "Applications")]
+		.map(dir => path.join(dir, "RobloxStudio.app", "Contents", "Resources"))
+		.filter(dir => fs.existsSync(path.join(dir, "content")));
+}
+
+// Studio's HTTP cache: %LOCALAPPDATA%/Roblox/rbx-storage on Windows, ~/Library/Roblox/rbx-storage on macOS.
+function rbxStorageDir() {
+	if (process.platform === "darwin") return path.join(os.homedir(), "Library", "Roblox", "rbx-storage");
+	return path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), "AppData", "Local"), "Roblox", "rbx-storage");
 }
 
 export function resolveRbxasset(uri) {
@@ -445,7 +460,7 @@ function blockedPlaceholder(type) {
 	if (!known) return null;
 	const file = path.join(ASSET_DIR, `placeholder-${known.md5}.png`);
 	if (fs.existsSync(file)) return fs.readFileSync(file);
-	const storage = path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), "AppData", "Local"), "Roblox", "rbx-storage");
+	const storage = rbxStorageDir();
 	let folders = [];
 	try {
 		folders = fs.readdirSync(storage);

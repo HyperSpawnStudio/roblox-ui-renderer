@@ -25,7 +25,11 @@ rur talks to Studio through an MCP server on a local TCP port: newline-delimited
 | `list_roblox_studios` | none | text content holding `{ "studios": [{ "id", "name" }] }`, the open Studio windows |
 | `execute_luau` | `studio_id`, `datamodel_type` (`"Edit"`), `code` | text content holding what the chunk returned |
 
-Any bridge that serves these over TCP works; the maintainers run their own. Settings:
+Any bridge that serves these over TCP works; the maintainers run their own. On macOS,
+`node tools/studio-mcp-bridge.mjs --port 44755` is one: it serves Studio's own MCP server (StudioMCP, which
+Studio runs while Assistant > Manage MCP Servers > "Enable Studio as MCP server" is on) on 127.0.0.1, so
+`tools/studio-mcp.cjs` probes and roblox-object-renderer's read-only exports work there. `rur compare` still
+needs Windows: its viewport capture and window resizing are `tools/wincap/` (PowerShell). Settings:
 
 | Variable | Meaning |
 |---|---|

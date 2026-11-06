@@ -566,7 +566,8 @@ const PLACEHOLDERS = [[PROJECT, "<project>"], [ROOT, "<repo>"]].flatMap(([dir, n
 // folder <studio-content>/ and the rest of it (ExtraContent/: BuilderIcons) <studio>/, so an update
 // doesn't change every digest (2026-09-30: 81 fast entries differed only in the content path; 2026-10-08:
 // 71 stories and compares in the ExtraContent path)
-const STUDIO = String.raw`[A-Za-z]:[\\/]+(?:[^"\\/]+[\\/]+)*?Roblox[\\/]+Versions[\\/]+version-[0-9a-f]+[\\/]+`;
+// macOS: the app bundle's Contents/Resources plays the version folder's part (…/RobloxStudio.app/Contents/Resources/content/)
+const STUDIO = String.raw`(?:[A-Za-z]:[\\/]+(?:[^"\\/]+[\\/]+)*?Roblox[\\/]+Versions[\\/]+version-[0-9a-f]+|/(?:[^"\\/]+/+)*?RobloxStudio\.app/+Contents/+Resources)[\\/]+`;
 const STUDIO_CONTENT = new RegExp(`${STUDIO}content[\\\\/]+`, "gi");
 const STUDIO_ROOT = new RegExp(STUDIO, "gi");
 
@@ -598,8 +599,16 @@ function normalizeValue(value) {
 	return value;
 }
 
+// The goldens were recorded on Windows, where the engine writes the mounted fixture's and module's paths
+// (scene.source) with backslashes: elsewhere they are written that way too, so a check on macOS or Linux hashes
+// the same text (2026-11-06, macOS: every fast scene entry differed only there)
+const windowsSeparators = value => typeof value === "string" ? value.replace(/^(<repo>|<project>)(\/.*)$/, (_, root, rest) => root + rest.replace(/\//g, "\\")) : value;
+
 function normalizeScene(scene) {
 	const copy = normalizeValue(scene);
+	if (path.sep === "/" && copy.source && typeof copy.source === "object") {
+		for (const key of Object.keys(copy.source)) copy.source[key] = windowsSeparators(copy.source[key]);
+	}
 	if (copy.diagnostics) {
 		delete copy.diagnostics.timings;
 		for (const key of ["fonts", "missingFontAssets"]) {

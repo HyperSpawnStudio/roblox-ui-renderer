@@ -417,7 +417,28 @@ fn content_roots() -> Vec<PathBuf> {
             roots.extend(installs.into_iter().map(|(_, dir)| dir));
         }
     }
+    roots.extend(mac_studio_resources());
     roots
+}
+
+/// macOS: RobloxStudio.app's `Contents/Resources` holds `content`, `ExtraContent` and `PlatformContent`
+/// as a Windows version folder does; `/Applications` first, then `~/Applications` (cli/assets.mjs
+/// macStudioResources).
+#[cfg(target_os = "macos")]
+fn mac_studio_resources() -> Vec<PathBuf> {
+    let mut apps = vec![PathBuf::from("/Applications")];
+    if let Some(home) = std::env::var_os("HOME") {
+        apps.push(PathBuf::from(home).join("Applications"));
+    }
+    apps.into_iter()
+        .map(|dir| dir.join("RobloxStudio.app").join("Contents").join("Resources"))
+        .filter(|dir| dir.join("content").is_dir())
+        .collect()
+}
+
+#[cfg(not(target_os = "macos"))]
+fn mac_studio_resources() -> Vec<PathBuf> {
+    Vec::new()
 }
 
 #[cfg(test)]
